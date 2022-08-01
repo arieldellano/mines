@@ -8,9 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/mattn/go-isatty"
-	"github.com/pkg/term/termios"
-	"golang.org/x/sys/unix"
+	"virgee.com/mines/terminal"
 )
 
 type Field struct {
@@ -43,8 +41,6 @@ func NewField(rows, cols, percentage int) *Field {
 		log.Fatal("Percentage must be between 1 and 100")
 	}
 
-	setupTerminal()
-
 	// seed randomizer
 	rand.Seed(time.Now().UnixNano())
 
@@ -66,36 +62,7 @@ func NewField(rows, cols, percentage int) *Field {
 	return f
 }
 
-var tattr unix.Termios
-var savedTattr unix.Termios
 var won bool
-
-func resetTattr(f *Field) {
-	// restore terminal
-	termios.Tcsetattr(os.Stdin.Fd(), termios.TCSAFLUSH, &savedTattr)
-	// show cursor
-	fmt.Print("\033[?25h")
-}
-
-func setupTerminal() {
-	// make sure stdin is a terminal
-	if !isatty.IsTerminal(os.Stdin.Fd()) {
-		log.Fatal("ERROR: this is not a terminal")
-	}
-
-	// save the terminal attributes so we can restore them later
-	termios.Tcgetattr(os.Stdin.Fd(), &savedTattr)
-
-	// turn off ICANON/ECHO
-	termios.Tcgetattr(os.Stdin.Fd(), &tattr)
-	tattr.Lflag &^= unix.ICANON | unix.ECHO
-	tattr.Cc[unix.VMIN] = 1
-	tattr.Cc[unix.VTIME] = 0
-	termios.Tcsetattr(os.Stdin.Fd(), termios.TCSAFLUSH, &tattr)
-
-	// hide cursor
-	fmt.Printf("\033[?25l")
-}
 
 func (f *Field) initializeCells() {
 	for row := 0; row < f.rows; row++ {
@@ -406,7 +373,7 @@ func (f *Field) panic(v ...any) {
 	f.showBombs()
 	f.Print(true)
 	fmt.Fprintln(os.Stderr, v...)
-	resetTattr(f)
+	terminal.ResetTattr()
 	os.Exit(0)
 }
 
@@ -487,7 +454,6 @@ func (f *Field) DidWin() bool {
 		}
 	}
 
-	resetTattr(f)
 	return true
 }
 
@@ -529,8 +495,6 @@ func (f *Field) Play() bool {
 
 		f.tapCell(f.crow, f.ccol)
 	case 'q':
-		resetTattr(f)
-
 		return true
 	case 27:
 		_, _, err := reader.ReadRune()
