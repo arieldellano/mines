@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	"virgee.com/mines/field"
+	"virgee.com/mines/terminal"
 )
 
 func usage() {
@@ -48,6 +49,9 @@ func main() {
 		}
 		percentage = p
 	}
+
+	terminal.SetupTerminal()
+	defer terminal.ResetTattr()
 
 	quit := false
 
